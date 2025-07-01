@@ -6,7 +6,10 @@
   "scripts": {
     "test": "playwright test",
     "test:headed": "playwright test --headed",
-    "codegen": "playwright codegen"
+    "codegen": "playwright codegen",
+    "report": "pkill -f 'playwright.*show-report' || true && npx playwright show-report",
+    "report:cleanup": "pkill -f 'playwright.*show-report' || true",
+    "test:report": "npm run test:headed && npm run report"
   },
   "keywords": [],
   "author": "Manus AI",
