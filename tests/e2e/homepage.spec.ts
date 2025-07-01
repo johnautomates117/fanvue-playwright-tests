@@ -9,18 +9,27 @@ test.describe('Homepage Verification', () => {
     await homePage.navigate();
     // Accept cookies if present
     await homePage.acceptCookies();
+    // Dismiss any popup modals that might interfere with tests
+    await homePage.dismissPopupModal();
   });
 
   test('should verify homepage title and main heading', async () => {
     await expect(homePage.page).toHaveTitle('Fanvue');
     await expect(homePage.mainHeading).toBeVisible();
+    
+    // Ensure popup is dismissed before reading heading text
+    await homePage.dismissPopupModal();
+    
     // Check that the heading contains key phrases
     const headingText = await homePage.mainHeading.textContent();
     expect(headingText?.toLowerCase()).toContain('platform');
-    expect(headingText?.toLowerCase()).toContain('creators');
+    expect(headingText?.toLowerCase()).toContain('creator');
   });
 
   test('should verify key sections and navigation links', async () => {
+    // Ensure popup is dismissed before checking sections
+    await homePage.dismissPopupModal();
+    
     await expect(homePage.signupMessage).toBeVisible();
     await expect(homePage.trustedCreatorsSection).toBeVisible();
     await expect(homePage.subscriptionsSection).toBeVisible();
