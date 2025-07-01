@@ -1,0 +1,19 @@
+{
+  "name": "fanvue-playwright-tests",
+  "version": "1.0.0",
+  "description": "E2E test automation for Fanvue using Playwright and AI-powered test generation",
+  "main": "index.js",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "codegen": "playwright codegen"
+  },
+  "keywords": [],
+  "author": "Manus AI",
+  "license": "MIT",
+  "devDependencies": {
+    "@playwright/test": "^1.44.1",
+    "@types/node": "^20.14.2",
+    "typescript": "^5.4.5"
+  }
+}
