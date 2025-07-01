@@ -17,6 +17,8 @@ export class HomePage extends BasePage {
   readonly signUpLink: Locator;
   readonly menuButton: Locator;
   readonly cookieAcceptButton: Locator;
+  readonly popupModal: Locator;
+  readonly popupCloseButton: Locator;
 
   constructor(page: Page) {
     super(page);
@@ -35,6 +37,10 @@ export class HomePage extends BasePage {
     this.loginLink = page.getByRole('link', { name: 'Login' });
     this.signUpLink = page.getByRole('link', { name: 'Sign Up', exact: true }).first();
     this.cookieAcceptButton = page.getByRole('link', { name: 'OK', exact: true });
+    
+    // Popup modal selectors
+    this.popupModal = page.locator('[role="dialog"], .modal, div:has-text("START YOUR CREATOR JOURNEY")').first();
+    this.popupCloseButton = page.locator('button:has-text("×"), button[aria-label="Close"], .close-button, button:near(:text("START YOUR CREATOR JOURNEY"))').first();
   }
 
   async acceptCookies() {
@@ -42,6 +48,26 @@ export class HomePage extends BasePage {
       await this.cookieAcceptButton.click({ timeout: 5000 });
     } catch (e) {
       // Cookie banner might not be visible
+    }
+  }
+
+  async dismissPopupModal() {
+    try {
+      // Wait briefly to see if popup appears
+      await this.popupModal.waitFor({ state: 'visible', timeout: 3000 });
+      
+      // Try multiple strategies to close the popup
+      if (await this.popupCloseButton.isVisible({ timeout: 1000 })) {
+        await this.popupCloseButton.click();
+      } else {
+        // If no close button found, try pressing Escape key
+        await this.page.keyboard.press('Escape');
+      }
+      
+      // Wait for popup to be hidden
+      await this.popupModal.waitFor({ state: 'hidden', timeout: 3000 });
+    } catch (e) {
+      // Popup might not be present, which is fine
     }
   }
 
