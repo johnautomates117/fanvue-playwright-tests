@@ -8,9 +8,12 @@ test.describe('Our Mission Page Verification', () => {
     homePage = new HomePage(page);
     await homePage.navigate();
     await homePage.acceptCookies();
+    // Wait for stable content without popup interference
+    await homePage.waitForStableContent();
   });
 
   test('should navigate to and verify content on Our Mission page', async () => {
+    // openNavigationMenu already handles popup dismissal
     await homePage.openNavigationMenu();
     await homePage.ourMissionLink.click();
     await expect(homePage.page).toHaveURL(/.*notion.*|.*mission/);

@@ -8,9 +8,12 @@ test.describe('Fanvue AI Page Verification', () => {
     homePage = new HomePage(page);
     await homePage.navigate();
     await homePage.acceptCookies();
+    // Wait for stable content without popup interference
+    await homePage.waitForStableContent();
   });
 
   test('should navigate to and verify content on fanvue AI page', async () => {
+    // openNavigationMenu already handles popup dismissal
     await homePage.openNavigationMenu();
     await homePage.fanvueAiLink.click();
     await expect(homePage.page).toHaveURL(/.*fanvue-ai/);
