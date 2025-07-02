@@ -17,8 +17,12 @@ export class HomePage extends BasePage {
   readonly signUpLink: Locator;
   readonly menuButton: Locator;
   readonly cookieAcceptButton: Locator;
-  readonly popupModal: Locator;
-  readonly popupCloseButton: Locator;
+
+  // Enhanced popup selectors based on actual HTML structure
+  readonly hubspotModal: Locator;
+  readonly hubspotCloseButton: Locator;
+  readonly hubspotForm: Locator;
+  readonly hubspotOverlay: Locator;
 
   constructor(page: Page) {
     super(page);
@@ -38,9 +42,11 @@ export class HomePage extends BasePage {
     this.signUpLink = page.getByRole('link', { name: 'Sign Up', exact: true }).first();
     this.cookieAcceptButton = page.getByRole('link', { name: 'OK', exact: true });
     
-    // Popup modal selectors
-    this.popupModal = page.locator('[role="dialog"], .modal, div:has-text("START YOUR CREATOR JOURNEY")').first();
-    this.popupCloseButton = page.locator('button:has-text("×"), button[aria-label="Close"], .close-button, button:near(:text("START YOUR CREATOR JOURNEY"))').first();
+    // Enhanced HubSpot modal selectors based on actual HTML structure
+    this.hubspotModal = page.locator('body[data-hs-container-type="MODAL"]');
+    this.hubspotCloseButton = page.locator('#interactive-close-button, [aria-label="Close"]');
+    this.hubspotForm = page.locator('form[id*="hs-form"]');
+    this.hubspotOverlay = page.locator('body[data-hs-container-type="MODAL"] .body-wrapper');
   }
 
   async acceptCookies() {
@@ -51,27 +57,129 @@ export class HomePage extends BasePage {
     }
   }
 
+  /**
+   * Enhanced popup detection and dismissal with multiple strategies
+   */
   async dismissPopupModal() {
-    try {
-      // Wait briefly to see if popup appears
-      await this.popupModal.waitFor({ state: 'visible', timeout: 3000 });
-      
-      // Try multiple strategies to close the popup
-      if (await this.popupCloseButton.isVisible({ timeout: 1000 })) {
-        await this.popupCloseButton.click();
-      } else {
-        // If no close button found, try pressing Escape key
-        await this.page.keyboard.press('Escape');
+    const maxAttempts = 3;
+    
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        // Check if HubSpot modal is visible
+        const isModalVisible = await this.hubspotModal.isVisible({ timeout: 2000 });
+        
+        if (!isModalVisible) {
+          // No modal found, we're good
+          return;
+        }
+        
+        console.log(`Attempt ${attempt}: HubSpot modal detected, attempting to close...`);
+        
+        // Strategy 1: Click the specific close button
+        if (await this.hubspotCloseButton.isVisible({ timeout: 1000 })) {
+          await this.hubspotCloseButton.click();
+          console.log('Clicked close button');
+        } else {
+          // Strategy 2: Press Escape key
+          await this.page.keyboard.press('Escape');
+          console.log('Pressed Escape key');
+        }
+        
+        // Wait for modal to disappear
+        await this.hubspotModal.waitFor({ state: 'hidden', timeout: 3000 });
+        console.log('Modal successfully dismissed');
+        return;
+        
+      } catch (e) {
+        console.log(`Attempt ${attempt} failed: ${e.message}`);
+        if (attempt === maxAttempts) {
+          console.log('All attempts failed, continuing with test');
+        }
+        // Wait before next attempt
+        await this.page.waitForTimeout(1000);
+      }
+    }
+  }
+
+  /**
+   * Safely get text content with popup interference handling
+   */
+  async getTextContentWithPopupHandling(locator: Locator, retries = 3): Promise<string | null> {
+    for (let i = 0; i < retries; i++) {
+      try {
+        // Dismiss any popups before reading content
+        await this.dismissPopupModal();
+        
+        // Wait for the element to be stable
+        await locator.waitFor({ state: 'visible', timeout: 5000 });
+        
+        // Get the text content
+        const text = await locator.textContent();
+        
+        // Validate that we got meaningful content (not popup text)
+        if (text && !this.isPopupText(text)) {
+          return text;
+        }
+        
+        console.log(`Retry ${i + 1}: Got potential popup text, retrying...`);
+        
+      } catch (e) {
+        console.log(`Retry ${i + 1} failed: ${e.message}`);
       }
       
-      // Wait for popup to be hidden
-      await this.popupModal.waitFor({ state: 'hidden', timeout: 3000 });
-    } catch (e) {
-      // Popup might not be present, which is fine
+      // Wait before retry
+      await this.page.waitForTimeout(1000);
+    }
+    
+    // Final attempt without popup handling
+    return await locator.textContent();
+  }
+
+  /**
+   * Detect if text content is from a popup rather than main content
+   */
+  private isPopupText(text: string): boolean {
+    const popupIndicators = [
+      'start earning',
+      'creator journey',
+      'start your creator',
+      'become a verified creator in under three minutes',
+      'your email address'
+    ];
+    
+    const lowerText = text.toLowerCase();
+    return popupIndicators.some(indicator => lowerText.includes(indicator));
+  }
+
+  /**
+   * Enhanced method to wait for page to be stable without popup interference
+   */
+  async waitForStableContent(timeout = 10000) {
+    const startTime = Date.now();
+    
+    while (Date.now() - startTime < timeout) {
+      // Dismiss any popups
+      await this.dismissPopupModal();
+      
+      try {
+        // Check if main heading is accessible and has expected content
+        const heading = await this.mainHeading.textContent({ timeout: 2000 });
+        if (heading && !this.isPopupText(heading)) {
+          // Content is stable and not from popup
+          return;
+        }
+      } catch (e) {
+        // Continue waiting
+      }
+      
+      await this.page.waitForTimeout(500);
     }
   }
 
   async openNavigationMenu() {
+    // Dismiss popup before interacting with navigation
+    await this.dismissPopupModal();
+    
     // Check if menu button is visible (mobile view)
     if (await this.menuButton.isVisible({ timeout: 1000 })) {
       await this.menuButton.click();
